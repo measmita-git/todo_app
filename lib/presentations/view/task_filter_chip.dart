@@ -1,8 +1,8 @@
+ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/provider/task_provider.dart';
-import '../view/task_filter_chip.dart';
 
 class TaskFilterChips extends StatelessWidget {
   const TaskFilterChips({super.key});
@@ -11,8 +11,8 @@ class TaskFilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<TaskProvider>(
       builder: (context, taskProvider, _) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -20,29 +20,29 @@ class TaskFilterChips extends StatelessWidget {
                 _buildFilterChip(
                   context,
                   'All',
-                  taskProvider.currentFilter == TaskFilter.all,
-                      () => taskProvider.setFilter(TaskFilter.all),
+                  TaskFilter.all,
+                  taskProvider,
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   context,
                   'Pending',
-                  taskProvider.currentFilter == TaskFilter.pending,
-                      () => taskProvider.setFilter(TaskFilter.pending),
+                  TaskFilter.pending,
+                  taskProvider,
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   context,
                   'Completed',
-                  taskProvider.currentFilter == TaskFilter.completed,
-                      () => taskProvider.setFilter(TaskFilter.completed),
+                  TaskFilter.completed,
+                  taskProvider,
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   context,
                   'Expired',
-                  taskProvider.currentFilter == TaskFilter.expired,
-                      () => taskProvider.setFilter(TaskFilter.expired),
+                  TaskFilter.expired,
+                  taskProvider,
                 ),
               ],
             ),
@@ -55,25 +55,27 @@ class TaskFilterChips extends StatelessWidget {
   Widget _buildFilterChip(
       BuildContext context,
       String label,
-      bool isSelected,
-      VoidCallback onTap,
+      TaskFilter filter,
+      TaskProvider taskProvider,
       ) {
-    final theme = Theme.of(context);
+    final isSelected = taskProvider.currentFilter == filter;
 
     return FilterChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
+      label: Text(label),
       selected: isSelected,
-      onSelected: (_) => onTap(),
-      backgroundColor: theme.chipTheme.backgroundColor,
-      selectedColor: theme.colorScheme.primary,
-      checkmarkColor: Colors.white,
-      showCheckmark: true,
+      onSelected: (_) {
+        // taskProvider.setFilter();
+      },
+      backgroundColor: Colors.grey.shade200,
+      selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+      checkmarkColor: Theme.of(context).primaryColor,
     );
   }
+}
+
+enum TaskFilter {
+  all,
+  pending,
+  completed,
+  expired,
 }

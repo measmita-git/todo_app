@@ -39,7 +39,7 @@ class AuthRepository {
     try {
       final result = await PocketBaseService.login(email, password);
       // Check if login was successful using safer type checking
-      final bool success = (result != null);
+      final bool success = (result != null); // not nullable ma nul check garya, why> hijo error dekhairathyo maile arko main file nbata call garda
 
       if (!success) {
         throw AuthException('Login failed. Please check your credentials.');

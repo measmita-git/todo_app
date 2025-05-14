@@ -1,254 +1,263 @@
-import 'dart:async';
+import 'dart:core';
+
 import 'package:flutter/material.dart';
-// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
+import 'package:pocketbase/pocketbase.dart';
 import '../../data/modal/task_modal.dart';
-import '../../data/repositories/task_repository.dart';
+import '../../presentations/view/home_page.dart';
+import '../../presentations/view/task_filter_chip.dart';
 import '../constants/app_constants.dart';
-import '../utils/date.dart' as date_util;
 
-enum TaskFilter { all, pending, completed, expired }
 
-class TaskProvider with ChangeNotifier {
-  final TaskRepository _taskRepository = TaskRepository();
-/// github ma push garera link deu, ma milai dinxu , huss , anydesk close garne? hunx, aaja jati bela vayeni hunx ki urgent xa?urgent vayara ho deadline aghi 10 baje k thiyo. la thik xa push garera, linkedin ma pathau,huss
-  List<TaskModel> _tasks = [];
-  List<TaskModel> _filteredTasks = [];
-  TaskFilter _currentFilter = TaskFilter.all;
+
+class TaskProvider extends ChangeNotifier {
+  List<Task> _tasks = [];
+  List<Task> get tasks => _tasks;
+
+  final pb = PocketBase(AppConstants.pocketBaseUrl);
+
   bool _isLoading = false;
-  String? _errorMessage;
-  Timer? _expiryCheckTimer;
-
-  List<TaskModel> get tasks => _tasks;
-  List<TaskModel> get filteredTasks => _filteredTasks;
-  TaskFilter get currentFilter => _currentFilter;
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
 
-  TaskProvider() {
-    // Start a timer to check for expired tasks periodically
-    _expiryCheckTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      _checkExpiredTasks();
-    });
-  }
+  String? _error;
+  String? get error => _error;
 
-  @override
-  void dispose() {
-    _expiryCheckTimer?.cancel();
-    super.dispose();
-  }
-
+  // Initialize tasks from local storage or other sources
   Future<void> initTasks() async {
-    await fetchTasks();
-  }
-
-  Future<void> fetchTasks() async {
     _isLoading = true;
-    _errorMessage = null;
     notifyListeners();
 
     try {
-      _tasks = await _taskRepository.getTasks();
-
-      // Check for expired tasks
-      _tasks = await _taskRepository.checkAndUpdateExpiredTasks(_tasks);
-
-      _applyFilter();
-      _scheduleNotifications();
-
-      _isLoading = false;
-      notifyListeners();
+      // We'll fetch tasks from PocketBase here
+      await fetchTasks();
     } catch (e) {
+      _error = 'Failed to initialize tasks: $e';
+    } finally {
       _isLoading = false;
-      _errorMessage = e.toString();
       notifyListeners();
+    }
+  }
+
+  TaskFilter _currentFilter = TaskFilter.all;
+  TaskFilter get currentFilter => _currentFilter;
+
+  List<Task> get filteredTasks {
+    switch (_currentFilter) {
+      case TaskFilter.all:
+        return _tasks;
+      case TaskFilter.pending:
+        return _tasks.where((task) => task.status == 'pending').toList();
+      case TaskFilter.completed:
+        return _tasks.where((task) => task.status == 'completed').toList();
+      case TaskFilter.expired:
+        return _tasks.where((task) => task.status == 'expired').toList();
     }
   }
 
   void setFilter(TaskFilter filter) {
     _currentFilter = filter;
-    _applyFilter();
     notifyListeners();
   }
 
-  void _applyFilter() {
-    switch (_currentFilter) {
-      case TaskFilter.all:
-        _filteredTasks = List.from(_tasks);
-        break;
-      case TaskFilter.pending:
-        _filteredTasks =
-            _tasks
-                .where((task) => task.status == AppConstants.pending)
-                .toList();
-        break;
-      case TaskFilter.completed:
-        _filteredTasks =
-            _tasks
-                .where((task) => task.status == AppConstants.completed)
-                .toList();
-        break;
-      case TaskFilter.expired:
-        _filteredTasks =
-            _tasks
-                .where((task) => task.status == AppConstants.expired)
-                .toList();
-        break;
-    }
-  }
-
-  Future<void> addTask(
-    String title,
-    String? description,
-    DateTime deadline,
-  ) async {
+  Future<void> fetchTasks() async {
     _isLoading = true;
-    _errorMessage = null;
+    _error = null;
     notifyListeners();
 
     try {
-      final newTask = await _taskRepository.createTask(
-        title: title,
-        description: description,
-        deadline: deadline,
-      );
-
-      _tasks.add(newTask);
-      _applyFilter();
-      _scheduleNotification(newTask);
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> markTaskAsCompleted(TaskModel task) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final updatedTask = await _taskRepository.markTaskAsCompleted(task);
-
-      // Update the task in the list
-      _tasks =
-          _tasks.map((t) => t.id == updatedTask.id ? updatedTask : t).toList();
-      _applyFilter();
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> deleteTask(String id) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      await _taskRepository.deleteTask(id);
-
-      // Remove the task from the list
-      _tasks.removeWhere((task) => task.id == id);
-      _applyFilter();
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> _checkExpiredTasks() async {
-    final expiredTasks =
-        _tasks
-            .where(
-              (task) =>
-                  task.status == AppConstants.pending &&
-                  date_util.DateUtils.isExpired(task.deadline),
-            )
-            .toList();
-
-    if (expiredTasks.isNotEmpty) {
-      for (final task in expiredTasks) {
-        try {
-          final updatedTask = await _taskRepository.markTaskAsExpired(task);
-          _tasks =
-              _tasks
-                  .map((t) => t.id == updatedTask.id ? updatedTask : t)
-                  .toList();
-        } catch (e) {
-          debugPrint('Error marking task as expired: ${e.toString()}');
-        }
+      // Check if user is authenticated
+      if (!pb.authStore.isValid) {
+        _error = 'User not authenticated';
+        _isLoading = false;
+        notifyListeners();
+        return;
       }
 
-      _applyFilter();
+      final userId = pb.authStore.model.id;
+
+      // Fetch tasks from PocketBase
+      final result = await pb.collection('tasks').getList(
+        filter: 'user = "$userId"',
+        sort: 'deadline',
+      );
+
+      // Convert to Task objects
+      _tasks = result.items.map((item) {
+        Map<String, dynamic> data = item.toJson();
+        // Add the id to the data
+        data['id'] = item.id;
+
+        // Update expired status for tasks that have passed their deadline
+        if (data['status'] == 'pending' &&
+            DateTime.parse(data['deadline']).isBefore(DateTime.now())) {
+          data['status'] = 'expired';
+          // Update in PocketBase
+          _updateTaskStatus(item.id, 'expired');
+        }
+
+        return Task.fromJson(data);
+      }).toList();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to fetch tasks: $e';
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> _scheduleNotifications() async {
-    // Cancel any existing notifications first
-    // await flutterLocalNotificationsPlugin.cancelAll();
+  Future<bool> addTask(String title, String? description, DateTime deadline) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
-    // Schedule notifications for pending tasks
-    final pendingTasks =
-        _tasks.where((task) => task.status == AppConstants.pending).toList();
+    try {
+      final userId = pb.authStore.model.id;
 
-    for (final task in pendingTasks) {
-      await _scheduleNotification(task);
+      final data = {
+        'title': title,
+        'description': description,
+        'deadline': deadline.toIso8601String(),
+        'isCompleted': false,
+        'status': 'pending',
+        'user': userId,
+      };
+
+      final record = await pb.collection('tasks').create(body: data);
+
+      // Add the new task to the list
+      Map<String, dynamic> taskData = record.toJson();
+      taskData['id'] = record.id;
+      _tasks.add(Task.fromJson(taskData));
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Failed to add task: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
-  Future<void> _scheduleNotification(TaskModel task) async {
-    // Only schedule notifications for pending tasks
-    if (task.status != AppConstants.pending) return;
+  Future<bool> markTaskCompleted(String taskId) async {
+    try {
+      await pb.collection('tasks').update(taskId, body: {
+        'isCompleted': true,
+        'status': 'completed',
+      });
 
-    // Calculate time until one hour before deadline
-    final duration = date_util.DateUtils.timeUntilOneHourBefore(task.deadline);
+      // Update the task in the local list
+      final index = _tasks.indexWhere((task) => task.id == taskId);
+      if (index != -1) {
+        _tasks[index] = _tasks[index].copyWith(
+          isCompleted: true,
+          status: 'completed',
+        );
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _error = 'Failed to mark task as completed: $e';
+      notifyListeners();
+      return false;
+    }
+  }
 
-    // Only schedule if the deadline is in the future
-    if (duration.isNegative) return;
+  Future<void> _updateTaskStatus(String taskId, String status) async {
+    try {
+      await pb.collection('tasks').update(taskId, body: {
+        'status': status,
+      });
+    } catch (e) {
+      print('Failed to update task status: $e');
+    }
+  }
 
-    // Create the notification details
-    // const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-    //   'task_reminders',
-    //   'Task Reminders',
-    //   channelDescription: 'Notifications for task deadlines',
-    //   importance: Importance.high,
-    //   priority: Priority.high,
-    // );
+  Future<bool> updateTask(String taskId, String title, String? description, DateTime deadline) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
-    // const DarwinNotificationDetails iOSPlatformChannelSpecifics = DarwinNotificationDetails(
-    //   presentAlert: true,
-    //   presentBadge: true,
-    //   presentSound: true,
-    // );
+    try {
+      final data = {
+        'title': title,
+        'description': description,
+        'deadline': deadline.toIso8601String(),
+        // Keep the existing status
+      };
 
-    // const NotificationDetails platformChannelSpecifics = NotificationDetails(
-    //   android: androidPlatformChannelSpecifics,
-    //   iOS: iOSPlatformChannelSpecifics,
-    // );
+      await pb.collection('tasks').update(taskId, body: data);
 
-    // Schedule the notification
-    // await flutterLocalNotificationsPlugin.zonedSchedule(
-    //   int.parse(task.id.substring(0, 8), radix: 16), // Convert first 8 chars of ID to int for unique ID
-    //   'Task Reminder: ${task.title}',
-    //   'Your task is due in 1 hour',
-    //   tz.TZDateTime.now(tz.local).add(duration),
-    //   platformChannelSpecifics,
-    //   androidAllowWhileIdle: true,
-    //   uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-    // );
+      // Update the task in the local list
+      final index = _tasks.indexWhere((task) => task.id == taskId);
+      if (index != -1) {
+        _tasks[index] = _tasks[index].copyWith(
+          title: title,
+          description: description,
+          deadline: deadline,
+        );
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Failed to update task: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteTask(String taskId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Delete the task from PocketBase
+      await pb.collection('tasks').delete(taskId);
+
+      // Remove the task from the local list
+      _tasks.removeWhere((task) => task.id == taskId);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Failed to delete task: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> checkExpiredTasks() async {
+    final now = DateTime.now();
+    bool hasChanges = false;
+
+    for (int i = 0; i < _tasks.length; i++) {
+      if (_tasks[i].status == 'pending' && _tasks[i].deadline.isBefore(now)) {
+        // Update task status to expired
+        _tasks[i] = _tasks[i].copyWith(status: 'expired');
+
+        // Update in PocketBase
+        await _updateTaskStatus(_tasks[i].id, 'expired');
+
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      notifyListeners();
+    }
+  }
+
+  void logout() {
+    pb.authStore.clear();
+    _tasks = [];
+    notifyListeners();
   }
 }

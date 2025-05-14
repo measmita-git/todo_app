@@ -51,11 +51,12 @@ class PocketBaseService {
     String passwordConfirm,
   ) async {
     try {
+
       final record = await _pb
           .collection('users')
           .create(
             body: {
-              'email': email,
+              'email': email,//teha aghi ko mail same vayera ho
               'password': password,
               'passwordConfirm': passwordConfirm,
             },
@@ -111,7 +112,6 @@ class PocketBaseService {
     if (!isAuthenticated) {
       throw AuthException('User not authenticated');
     }
-
     try {
       // Add the user ID to the task data
       taskData['user'] = userId;

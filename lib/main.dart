@@ -1,9 +1,9 @@
-import 'package:lottie/lottie.dart';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
-import 'package:awesome_notifications/awesome_notifications.dart';
-/// Timro app ta antai pugyo ta. hajur le mathi ko main code run
+// import 'package:lottie/lottie.dart';
+// import 'package:flutter/material.dart';
+// import 'package:intl/intl.dart';
+// import 'package:uuid/uuid.dart';
+// import 'package:awesome_notifications/awesome_notifications.dart';
+//
 // void main() async {
 //   WidgetsFlutterBinding.ensureInitialized();
 //   AwesomeNotifications().initialize(null, [
@@ -515,8 +515,8 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 //     );
 //   }
 // }
-
-// Modified main.dart to handle loading states better
+//
+// SaveModified main.dart to handle loading states better
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -527,6 +527,7 @@ import 'package:todo_app/data/services/auth_services.dart';
 import 'package:todo_app/data/services/pocketbase_services.dart';
 import 'package:todo_app/presentations/view/auth/login_screen.dart';
 import 'package:todo_app/presentations/view/home_page.dart';
+import 'package:todo_app/presentations/view/tasks/todo_screen.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -697,7 +698,7 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
           Future.microtask(() {
             Provider.of<TaskProvider>(context, listen: false).initTasks();
           });
-          return const HomePage();
+          return const TodoScreen();
         }
 
         // User is not authenticated

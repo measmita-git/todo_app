@@ -1,6 +1,6 @@
 class AppConstants {
   // PocketBase
-  static const String pocketBaseUrl = 'http://127.0.0.1:8090/';
+  static const String pocketBaseUrl = 'http://172.20.10.5:8081/';
   static const String usersCollection = 'users';
   static const String tasksCollection = 'tasks';
 

@@ -5,6 +5,7 @@ import 'package:todo_app/presentations/view/auth/signup_screen.dart';
 
 import '../../../core/provider/auth_provider.dart';
 import '../home_page.dart';
+import '../tasks/todo_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -169,7 +170,7 @@ class _LoginPageState extends State<LoginPage> {
         if (authProvider.status == AuthStatus.authenticated) {
           // Navigate to home page
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomePage()),
+            MaterialPageRoute(builder: (context) => const TodoScreen()),
           );
         }
       } catch (e) {
