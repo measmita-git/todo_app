@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/provider/auth_provider.dart';
@@ -6,6 +7,7 @@ import '../../core/provider/task_provider.dart';
 import '../widgets/task_filter_chip.dart';
 import 'auth/login_screen.dart';
 
+final PocketBase pb = PocketBase('http://127.0.0.1:8090');
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,7 +28,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Deadline Todo App'),
+        title: const Text('Todo App'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -36,18 +38,21 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: _handleLogout,
+            onPressed: () {
+              logout();
+            },
           ),
         ],
       ),
-      body: _currentIndex == 0
-          ? Column(
-        children: [
-          const TaskFilterChips(),
-          Expanded(child: _pages[_currentIndex]),
-        ],
-      )
-          : _pages[_currentIndex],
+      body:
+          _currentIndex == 0
+              ? Column(
+                children: [
+                  const TaskFilterChips(),
+                  Expanded(child: _pages[_currentIndex]),
+                ],
+              )
+              : _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -61,14 +66,8 @@ class _HomePageState extends State<HomePage> {
           }
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: 'Tasks',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'Add Task',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Tasks'),
+          BottomNavigationBarItem(icon: Icon(Icons.add), label: 'Add Task'),
         ],
       ),
     );
@@ -97,5 +96,9 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => const LoginPage()),
     );
+  }
+
+  static void logout() {
+    pb.authStore.clear();
   }
 }

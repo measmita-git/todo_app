@@ -187,8 +187,9 @@ class _SignupPageState extends State<SignupPage> {
         await authProvider.signUp(
           _emailController.text.trim(),
           _passwordController.text,
-          _confirmPasswordController.text,
+          _confirmPasswordController.text, // ✅ Add this
         );
+
 
         if (!mounted) return;
 
